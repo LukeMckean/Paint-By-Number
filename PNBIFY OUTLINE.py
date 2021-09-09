@@ -17,7 +17,7 @@ total_time = time.time()
 
 
 
-img = plt.imread('out.PNG')
+img = plt.imread('Untitled.PNG')
 
 #get the dimensions of the image
 n,m,d = img.shape
@@ -40,9 +40,8 @@ for row in range(0,n-1):
         edge_score_c = (img[row, col]-img[row, col+1])
         edge_score_r = (img[row, col]-img[row+1, col])
         
-        if np.all( edge_score_c == 0): 
-            edges_img[row, col] = [1]*3
-        else: 
+        if np.any( edge_score_c != 0): 
+
             edges_img[row, col] = [0]*3        
         
         if np.any( edge_score_r != 0): 
@@ -58,6 +57,7 @@ im = Image.fromarray((edges_img * 255).astype(np.uint8))
 plt.imshow(im)
 plt.show()
 
+print ("(Time taken: {})".format(time.time() - total_time))
 
 # count and index Zones
 
@@ -104,13 +104,21 @@ while bool(unchecked_pxls) == True :
                 queue.append((temp[0],temp[1]-1))
 
        
-    zones_dict[i] = new_list
     
+    unchecked_pxls = list(set(unchecked_pxls)- set(new_list))
+    if len(new_list)>5:
+            zones_dict[i] = new_list
     #to remove the new 'zone' from 'unchecked_pxls make them a SET first
     #I dont know why but this is like 10x faster then .remove
     
-    unchecked_pxls = list(set(unchecked_pxls)- set(zones_dict[i]))
+    
     i+=1
+    
+    plt.imshow(img_2d)
+    plt.show()
+    
+   # x= input("sdF")
+    
     if time.time() - last_time > 1:
         last_time = time.time()   
 
@@ -121,43 +129,57 @@ while bool(unchecked_pxls) == True :
 #revert the light blue pxls back to white
 edges_img[edges_img == .1] = 1
 
-print('\n',"you have ", str(i), " zones" )    
+    
+print('\n',"you have ", str(len(zones_dict)), " zones" )    
 #let the people know whats going on in your life
 
 
 print('\n',"STEP 3: Labeling Zones ")  
     
 
+
+
+
+
 font = ImageFont.truetype('kovensky-small.ttf', font_size)
 
 im = Image.fromarray((edges_img * 255).astype(np.uint8))
 draw = ImageDraw.Draw(im)
-blk = np.array([255,255,255])
+bad_nums = 0
+def cropper(zonesf):
+    top,left = (random.choice(zonesf))
+    right = left+font_size-1
+    bottom = top+font_size-1
+    return (top+1, left+1, right, bottom)
 
 
 for zone in zones_dict:
-    imc=[]
+    top, left, right, bottom = cropper(zones_dict[zone]) #random point in the zone
+    imc = im.crop((left, top, right, bottom)) 
     i=0
     #check if the number placement is any good or if itll crash with lines
     
-    while np.all(np.array(imc) == blk) == False:  #for some reason this gives me a soft error
+    while np.all((np.array(imc) == 255)) == False:  #for some reason this gives me a soft error
     # DeprecationWarning: elementwise comparison failed; this will raise an error in the future.
     #not sure what to do with that
-    
-        top,left = random.choice(zones_dict[zone]) #random point in the zone
-        right = left+font_size+1
-        bottom = top+font_size+1
+        #top,left = zones_dict[zone][0]
+        top, left, right, bottom = cropper(zones_dict[zone])
         imc = im.crop((left, top, right, bottom)) #crop the image to a small box
         #then while loop checks if there are black pxls in there
         i+=1
-        if i>500: break #if it cant find anything good it breaks
+        if i>500: 
+            #("couldnt find a good spot in zone: ", str(zone),
+                  #"\n (", str(top), ", ", str(right), ")")
+            bad_nums +=1
+            break #if it cant find anything good it breaks
     
     
-    color_index = np.where(np.all(img[top,left]
-                                           == all_colors, axis=1))
-    draw.text((left,top), str(int(''.join(map(str, color_index[0])))) ,(150,150,150),font=font)
+    color_index = np.where(np.all(img[top,left] == all_colors, axis=1))
+    
+    draw.text((left,top), str(int(''.join(map(str, color_index[0]))))+"(" +str(zone)+")" ,
+                                              (0,0,255),font=font)
 
-
+print('\n', "you got ", str(bad_nums), "bad number placements out of ", str(len(zones_dict)))
 plt.imshow(im)
 plt.show()
 
