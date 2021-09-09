@@ -13,11 +13,12 @@ import random, time
 
 
 font_size = 10 # font size for numbering
+
 total_time = time.time()
 
 
 
-img = plt.imread('Untitled.PNG')
+img = plt.imread('out.PNG')
 
 #get the dimensions of the image
 n,m,d = img.shape
@@ -49,6 +50,8 @@ for row in range(0,n-1):
         
         if time.time() - last_time > 2:
             last_time = time.time()
+            plt.imshow(edges_img)
+            plt.show()
             print("Chewing on row " + str(row) + " out of " + str (n))
             #let the people know whats going on in your life
 
@@ -114,8 +117,6 @@ while bool(unchecked_pxls) == True :
     
     i+=1
     
-    plt.imshow(img_2d)
-    plt.show()
     
    # x= input("sdF")
     
@@ -137,20 +138,21 @@ print('\n',"you have ", str(len(zones_dict)), " zones" )
 print('\n',"STEP 3: Labeling Zones ")  
     
 
-
-
-
-
 font = ImageFont.truetype('kovensky-small.ttf', font_size)
 
 im = Image.fromarray((edges_img * 255).astype(np.uint8))
 draw = ImageDraw.Draw(im)
 bad_nums = 0
+rand_checker = ((n*m)/len(zones_dict)/font_size)*2
+
 def cropper(zonesf):
     top,left = (random.choice(zonesf))
-    right = left+font_size-1
-    bottom = top+font_size-1
-    return (top+1, left+1, right, bottom)
+    right = left+font_size+1
+    bottom = top+font_size+1
+    return (top-1, left-1, right, bottom)
+
+def avg(lst, place):
+    return (int(sum(item[place] for item in lst)/len(lst)))
 
 
 for zone in zones_dict:
@@ -167,17 +169,24 @@ for zone in zones_dict:
         imc = im.crop((left, top, right, bottom)) #crop the image to a small box
         #then while loop checks if there are black pxls in there
         i+=1
-        if i>500: 
+        if i>rand_checker: 
             #("couldnt find a good spot in zone: ", str(zone),
                   #"\n (", str(top), ", ", str(right), ")")
             bad_nums +=1
             break #if it cant find anything good it breaks
     
     
-    color_index = np.where(np.all(img[top,left] == all_colors, axis=1))
+    color_index = np.where(np.all(img[zones_dict[zone][0]] == all_colors, axis=1))
+ 
+    if i>rand_checker: 
+        left = avg(zones_dict[zone],1)-1
+        top = avg(zones_dict[zone],0)-1
     
-    draw.text((left,top), str(int(''.join(map(str, color_index[0]))))+"(" +str(zone)+")" ,
-                                              (0,0,255),font=font)
+    draw.text((left,top), str(int(''.join(map(str, color_index[0])))),
+                                              (0,0,255),font=font)    
+    
+    #draw.text((left,top), str(int(''.join(map(str, color_index[0]))))+"(" +str(zone)+")" ,
+                                              #(0,0,255),font=font)
 
 print('\n', "you got ", str(bad_nums), "bad number placements out of ", str(len(zones_dict)))
 plt.imshow(im)
