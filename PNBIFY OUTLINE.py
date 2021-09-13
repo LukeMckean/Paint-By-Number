@@ -9,16 +9,16 @@ from PIL import ImageDraw
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
-import random, time
+import time
 
 
 font_size = 10 # font size for numbering
-
+font_color = (0,0,255)
 total_time = time.time()
 
 
 
-img = plt.imread('out.PNG')
+img = plt.imread('mike.PNG')
 
 #get the dimensions of the image
 n,m,d = img.shape
@@ -48,10 +48,10 @@ for row in range(0,n-1):
         if np.any( edge_score_r != 0): 
             edges_img[row, col] = [0]*3   
         
-        if time.time() - last_time > 2:
+        if time.time() - last_time > 5:
             last_time = time.time()
-            plt.imshow(edges_img)
-            plt.show()
+            # plt.imshow(edges_img)
+            # plt.show()
             print("Chewing on row " + str(row) + " out of " + str (n))
             #let the people know whats going on in your life
 
@@ -70,6 +70,12 @@ print('\n',"STEP 2: Counting Zones ")
 new_list = []
 unchecked_pxls = []
 img_2d = edges_img[:,:,0] 
+img_2d[0,:] = 0 
+img_2d[:,0] = 0
+img_2d[n-1,:] = 0
+img_2d[:,m-1] = 0
+
+
 
 #make unchecked pixel matrix for every point that isnt a black pxl
 for row in range(0,n):
@@ -109,18 +115,15 @@ while bool(unchecked_pxls) == True :
        
     
     unchecked_pxls = list(set(unchecked_pxls)- set(new_list))
-    if len(new_list)>5:
+    
+    if len(new_list)>(font_size)**2:
             zones_dict[i] = new_list
+            i+=1
     #to remove the new 'zone' from 'unchecked_pxls make them a SET first
     #I dont know why but this is like 10x faster then .remove
+ 
     
-    
-    i+=1
-    
-    
-   # x= input("sdF")
-    
-    if time.time() - last_time > 1:
+    if time.time() - last_time > 5:
         last_time = time.time()   
 
         plt.imshow(img_2d)
@@ -142,53 +145,40 @@ font = ImageFont.truetype('kovensky-small.ttf', font_size)
 
 im = Image.fromarray((edges_img * 255).astype(np.uint8))
 draw = ImageDraw.Draw(im)
-bad_nums = 0
-rand_checker = ((n*m)/len(zones_dict)/font_size)*2
 
-def cropper(zonesf):
-    top,left = (random.choice(zonesf))
-    right = left+font_size+1
-    bottom = top+font_size+1
-    return (top-1, left-1, right, bottom)
 
-def avg(lst, place):
-    return (int(sum(item[place] for item in lst)/len(lst)))
+def ray_trace(zone, im_array):
+    min_dist = []
+    for point in zone:
+        i=1
+        check_value = 4
+        while check_value == 4:
+            check_value = im_array[point[0]-i,point[1]
+                                   ]+im_array[point[0]+i,point[1]
+                                   ]+im_array[point[0],point[1]+i
+                                              ]+im_array[point[0],point[1]-i]
+            i +=1
+        min_dist.append(i)
+    index_max = max(range(len(min_dist)), key=min_dist.__getitem__)
+    return(zone[index_max])
+            
+    
+
 
 
 for zone in zones_dict:
-    top, left, right, bottom = cropper(zones_dict[zone]) #random point in the zone
-    imc = im.crop((left, top, right, bottom)) 
-    i=0
-    #check if the number placement is any good or if itll crash with lines
-    
-    while np.all((np.array(imc) == 255)) == False:  #for some reason this gives me a soft error
-    # DeprecationWarning: elementwise comparison failed; this will raise an error in the future.
-    #not sure what to do with that
-        #top,left = zones_dict[zone][0]
-        top, left, right, bottom = cropper(zones_dict[zone])
-        imc = im.crop((left, top, right, bottom)) #crop the image to a small box
-        #then while loop checks if there are black pxls in there
-        i+=1
-        if i>rand_checker: 
-            #("couldnt find a good spot in zone: ", str(zone),
-                  #"\n (", str(top), ", ", str(right), ")")
-            bad_nums +=1
-            break #if it cant find anything good it breaks
-    
-    
+    #get the color index of the zone by pulling the first point in the dic
     color_index = np.where(np.all(img[zones_dict[zone][0]] == all_colors, axis=1))
- 
-    if i>rand_checker: 
-        left = avg(zones_dict[zone],1)-1
-        top = avg(zones_dict[zone],0)-1
-    
-    draw.text((left,top), str(int(''.join(map(str, color_index[0])))),
-                                              (0,0,255),font=font)    
-    
-    #draw.text((left,top), str(int(''.join(map(str, color_index[0]))))+"(" +str(zone)+")" ,
-                                              #(0,0,255),font=font)
+    #run ray trace function to get best placement
+    top,left = ray_trace(zones_dict[zone], img_2d)
+    #
+   
+    draw.text((left-2,top-2), str(int(''.join(map(str, color_index[0]))))
+              ,font_color,font=font)    
+    if time.time() - last_time > 5:
+            last_time = time.time()
+            print("Labeling zone " + str(zone) + " out of " + str (len(zones_dict)))
 
-print('\n', "you got ", str(bad_nums), "bad number placements out of ", str(len(zones_dict)))
 plt.imshow(im)
 plt.show()
 
@@ -226,9 +216,12 @@ plt.show()
 
 
 print("STEP 6: Saving files")
+
+imc = im.crop((1, 1, m-1, n-1))
+
   
 ref_color.save('PBN Colors.png')
-im.save('PBN sample_Numbered.png')
+imc.save('PBN sample_Numbered.png')
 
 
 print ("Done! (Time taken: {})".format(time.time() - total_time))
